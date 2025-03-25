@@ -1,1 +1,3 @@
-pip install streamlit openAI
+openai
+streamlit
+pandas  
