@@ -3,3 +3,4 @@ streamlit
 pandas  
 statsmodels
 scikit-learn
+matplotlib
