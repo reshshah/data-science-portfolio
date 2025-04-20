@@ -13,8 +13,8 @@ using a two-sided test, adjusting for dropout rate.
 """)
 
 # User Inputs
-p1 = st.number_input("Proportion in Treatment Group (e.g., AIC + SOC)", min_value=0.0, max_value=1.0, value=0.6)
-p2 = st.number_input("Proportion in Control Group (e.g., SOC)", min_value=0.0, max_value=1.0, value=0.3)
+p1 = st.number_input("Proportion in Treatment Group)", min_value=0.0, max_value=1.0, value=0.6)
+p2 = st.number_input("Proportion in Control Group)", min_value=0.0, max_value=1.0, value=0.3)
 power = st.slider("Desired Power (1 - Beta)", min_value=0.5, max_value=0.99, value=0.8)
 alpha = st.slider("Significance Level (Alpha)", min_value=0.001, max_value=0.2, value=0.05)
 dropout_rate = st.slider("Expected Dropout Rate", min_value=0.0, max_value=0.5, value=0.15)
