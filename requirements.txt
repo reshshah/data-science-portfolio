@@ -6,5 +6,4 @@ scikit-learn
 matplotlib
 seaborn
 wordcloud
-json
 BytesIO
