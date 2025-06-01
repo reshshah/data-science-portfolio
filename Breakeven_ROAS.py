@@ -49,8 +49,8 @@ results_df = pd.DataFrame({
     "Projected Revenue ($)": projected_revenue
 })
 
-import ace_tools as tools
-tools.display_dataframe_to_user(name="ROAS & Media Mix Plan", dataframe=results_df)
+st.subheader("📊 ROAS & Media Mix Plan")
+st.dataframe(results_df, use_container_width=True)
 
 # Total Summary
 total_projected = sum(projected_revenue)
