@@ -18,7 +18,7 @@ with col1:
 with col2:
     social_pct = st.slider("Social Media Budget %", 0, 100, 35)
 with col3:
-    yelp_pct = st.slider("Affiliate Budget %", 0, 100, 15)
+    aff_pct = st.slider("Affiliate Budget %", 0, 100, 15)
 
 display_pct = 100 - (sem_pct + social_pct + aff_pct)
 if display_pct < 0:
