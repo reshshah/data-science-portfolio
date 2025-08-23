@@ -4,9 +4,9 @@ import datetime
 import streamlit as st
 from openai import OpenAI
 
-st.set_page_config(page_title="Real Estate Segmentation Coach", page_icon="🏠", layout="wide")
-st.title("🏠 Rental Property Market Segmentation Coach")
-st.caption("Quantify TAM/SAM in the US and produce 5–6 targetable segments with channels. Uses OpenAI Responses API (with optional web_search).")
+st.set_page_config(page_title="Rental Real Estate Segmentation Expert", page_icon="🏠", layout="wide")
+st.title("🏠 Rental Property Market Segmentation Expert")
+st.caption("Quantify TAM/SAM in the US and produce 5–6 targetable segments with channels. Uses OpenAI Responses API.")
 
 # ---------------- Sidebar: API & Model ----------------
 with st.sidebar:
@@ -40,11 +40,14 @@ Your job:
 3) Produce a targetable list of 5–6 distinct segments (clear, mutually exclusive where possible).
 4) Recommend the best marketing channels (and why) for each segment.
 5) Always cite recent, reputable sources inline and at the end.
-6) SHow data only from 2025 onwards.
-7) Identify atleast 10 states & metro cities with the highest investor activity in the US.
+6) Add the link to the report next to the citation.
+7) Show data only from 2025 onwards.
+8) Identify atleast 10 states & metro cities with the highest investor activity in the US.
+9) Identify atleast 100 zipcodes with the highest investor activity in the US.
+10)
 
 Scope and evidence:
-- Use web research and prefer data from these domains (in priority order). If paywalled, quote high-level stats only and still cite:
+- Use web research and prefer data from these domains (in priority order). If paywalled, quote high-level stats only and still cite and provide the link:
   • investopedia.com
   • nar.realtor
   • bls.gov (include bls.gov/eag/)
@@ -94,7 +97,7 @@ Research plan:
 Deliverables:
 - 5–6 targetable segments (name, who they are, key needs, proxy targeting attributes).
 - Channel recommendations per segment (paid search, social, YouTube, podcasts, newsletters, LinkedIn, BiggerPockets, forums, affiliates, lead-gen partners, etc.) with rationale.
-- Cite specific pages inline like [Source: NAR 2025 Investor Report] and include a full citation list at end.
+- Cite specific pages inline like [Source: NAR 2025 Investor Report] and include a full citation list whereever the stats are quoted.
 """
 
 default_question = (
