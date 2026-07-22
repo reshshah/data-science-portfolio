@@ -62,6 +62,56 @@ transition_counts.csv         the aggregate matrix (the model's entire input)
 attribution_results.csv       per-channel results with credible intervals
 ```
 
+## Code walkthrough
+
+### The "business entities" in the code
+
+The model treats a customer's shopping journey as a walk through a small graph of 8 states:
+
+```python
+STATES = ["Start", "Social", "Display", "Search", "Email", "Direct", "Conv", "Null"]
+```
+
+- **`Start`** — a pseudo-state everyone begins in
+- **`Social`, `Display`, `Search`, `Email`, `Direct`** — the 5 marketing channels (this is the "business entity" that matters — whatever touchpoint categories your company tracks)
+- **`Conv`** — the customer purchased (an absorbing/end state)
+- **`Null`** — the customer never bought (also an absorbing/end state)
+
+Everything else in the code is math on top of this graph.
+
+### `journey_attribution.py` walkthrough
+
+1. **Fabricate ground truth** (`T_TRUE`, lines 28–36): a hand-picked 8×8 matrix of "if a customer is currently at state A, here's the probability they go to state B next." This is the fake business reality the whole exercise pretends to discover.
+2. **Simulate 25,000 customers** (lines 41–51): starting from `Start`, repeatedly roll dice using `T_TRUE` to decide the next touchpoint, stop when they hit `Conv` or `Null` (or after 12 steps, treated as `Null`). Each customer ends up as a list like `["Social", "Email", "Search"] → "Conv"`.
+3. **Collapse to a count matrix** (lines 57–66): walk each customer's path as consecutive pairs (`Start→Social`, `Social→Email`, `Email→Search`, `Search→Conv`) and tally how many times each transition happened, into an 8×8 integer matrix `C`. This is the only thing that survives — no individual customer paths are kept past this point, which is the "privacy by design" part.
+4. **Also compute last-touch** (lines 68–74), just as the naive baseline to compare against.
+5. **Bayesian part** (lines 76–132): for each of the 5 real (non-`Start`) rows of `C`, treat it as a multinomial and draw 4,000 samples from its Dirichlet posterior — i.e., 4,000 slightly different plausible versions of "what are the true transition probabilities out of this channel," given the observed counts. For each sampled matrix, `p_conversion()` solves a linear system (standard absorbing-Markov-chain math) to get the overall probability of ending in `Conv`. Removing a channel means: redirect all its inflow to `Null` and recompute — the resulting drop in conversion probability is that channel's "removal effect." Do this for all 5 channels × 4,000 draws, normalize to shares, and you get a full distribution of credit per channel, not just one number.
+6. **Charts** (lines 144–190): bar chart of last-touch vs. Bayesian-with-error-bars, and histograms of the posterior distributions per channel.
+
+### `small_sample_uncertainty.py` walkthrough
+
+Reuses the identical simulation and `p_conversion()` logic, but:
+- Runs the same posterior process on **only the first 2,000 journeys** vs. the **full 25,000**, to show the credible intervals shrink as data grows (that's `fig4`).
+- Also redraws the journey graph as an actual node-and-arrow diagram (`fig1`) — node size = traffic through that channel, edge width = transition probability.
+
+## Replicating this with real data
+
+The model's only real input is a per-customer, time-ordered sequence of touchpoints ending in a known outcome. So your raw data needs these columns, at minimum:
+
+| Column | Purpose |
+|---|---|
+| `customer_id` (or `user_id`/anonymous `cookie_id`) | Groups touchpoints into one journey |
+| `channel` | Which marketing channel this touchpoint belongs to — you'd map your raw UTM/ad-platform data into a small fixed set of category labels (Social, Display, Search, Email, Direct, etc.) |
+| `timestamp` | Orders the touchpoints chronologically within a journey |
+| `conversion_flag` or `order_id` / `purchase_timestamp` | Marks whether (and when) that journey ended in a purchase |
+
+From that raw event table, you'd do the same two steps the script does synthetically:
+
+1. **Group by customer**, sort by timestamp, and build each journey as a sequence like `[Search, Email, Direct] → Conv` (or `→ Null` if they never bought within your attribution window — you'd need to pick a lookback window, e.g. 30 or 90 days, same role as `MAX_STEPS=12` here).
+2. **Count transitions** between consecutive touchpoints (including `Start→first_channel` and `last_channel→outcome`) into an N×N matrix, where N = number of channels + 3 (Start, Conv, Null).
+
+Everything after that — the Dirichlet posterior, removal effects, credible intervals — is generic and doesn't change; it just operates on whatever count matrix you feed it. Note: this version doesn't use revenue at all, only counts — if you wanted dollar-weighted attribution you'd need a `revenue` column too, but that'd be an extension beyond what's here.
+
 ## Limitations
 
 - **First-order Markov assumption**: the model only looks one step back ("what channel did they just come from"), not the full history. A longer memory would be more accurate but risks running out of data to estimate all the extra combinations.
