@@ -61,7 +61,26 @@ Unsupervised segmentation applied to real estate data — clustering methodology
 
 ```bash
 pip install -r requirements.txt
-streamlit run <path-to-tool>.py
 ```
 
-LLM-powered tools prompt for an API key in the UI — no keys are stored in this repo.
+**Streamlit apps** (open an interactive UI in your browser):
+
+```bash
+streamlit run marketing-analytics/mmm_assistant.py
+streamlit run marketing-analytics/breakeven_roas.py
+streamlit run experimentation/sample_size_calculator.py
+streamlit run llm-apps/sentiment_topic_pipeline.py
+streamlit run segmentation/real_estate_segments.py
+```
+
+LLM-powered tools prompt for an OpenAI API key in the UI — no keys are stored in this repo.
+
+**Plain scripts** (run once, print/plot output — bring your own CSV):
+
+```bash
+python marketing-analytics/ads_measurement.py --data path/to/ads_data.csv
+python marketing-analytics/ads_performance.py --data path/to/dataset.csv --out processed_dataset.csv
+```
+
+`ads_measurement.py` expects columns: `user_id, channel, click_time, conversion_time, revenue`.
+`ads_performance.py` expects columns: `clicks, impressions, cost`.

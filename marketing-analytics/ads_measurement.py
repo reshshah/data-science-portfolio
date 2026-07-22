@@ -1,9 +1,15 @@
+import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+parser = argparse.ArgumentParser(description="Conversion rate & revenue by channel")
+parser.add_argument("--data", default="../data/ads_data.csv",
+                     help="Path to a CSV with columns: user_id, channel, click_time, conversion_time, revenue")
+args = parser.parse_args()
+
 # Load data
-df = pd.read_csv('../data/ads_data.csv', parse_dates=['click_time', 'conversion_time'])
+df = pd.read_csv(args.data, parse_dates=['click_time', 'conversion_time'])
 
 # Conversion Rate by Channel
 conversion_df = df.groupby('channel').agg(
