@@ -11,7 +11,6 @@ Multi-touch attribution: given user-level touchpoint paths, which channel deserv
 
 *The business question:* "Which channels are actually driving conversions — and which are just getting credit?"
 
-<!-- TODO: replace with actual file names and one-line descriptions once listed -->
 
 ### 🧭 Customer Intelligence Platform
 **`customer-intelligence-platform/`**
