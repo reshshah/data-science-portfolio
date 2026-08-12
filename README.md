@@ -1,8 +1,6 @@
 # Applied ML & Analytics Tools
 
-Self-contained tools built from real marketing, growth, and experimentation problems in retail. Each one solves a specific decision a marketing or growth team faces — not a Kaggle exercise.
-
-> Looking for production ML systems work? See my flagship project: [AgentOps — Multi-Agent Churn Prediction](https://github.com/reshshah/agentops-churn-prediction)
+Self-contained tools built from real marketing, growth, and experimentation problems in retail. Each one solves a specific decision a marketing or growth team faces.
 
 ---
 
@@ -46,17 +44,9 @@ Two-sample power analysis for experiment design: minimum detectable effect, base
 
 Unsupervised segmentation applied to real estate data — clustering methodology transferable to customer base segmentation.
 
+### Production ML System
+** Looking for production ML systems work? More to come here: [AgentOps — Multi-Agent Churn Prediction](https://github.com/reshshah/agentops-churn-prediction)
 ---
-
-## Structure
-
-```
-├── marketing-analytics/     ← MMM, ROAS, media decisioning
-├── llm-apps/                ← LLM-powered analysis tools
-├── experimentation/         ← test design & power analysis
-├── segmentation/            ← clustering & segmentation
-└── requirements.txt
-```
 
 ## Running Any Tool
 
