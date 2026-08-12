@@ -17,6 +17,13 @@ Upload channel spend + sales data, get an OLS baseline, Lasso-regularized coeffi
 
 `statsmodels` `scikit-learn` `LassoCV` `Streamlit`
 
+### 💰 Breakeven ROAS Calculator
+**`marketing-analytics/breakeven_roas.py`**
+
+Margin-aware ROAS thresholds for paid media. Answers whether a campaign is actually profitable after contribution margin — not just whether the platform dashboard looks good.
+
+*The decision it supports:* "Is this campaign making or losing money?"
+
 ### 💬 LLM Sentiment & Topic Pipeline
 **`llm-apps/sentiment_topic_pipeline.py`**
 
@@ -26,12 +33,6 @@ LLM-powered classification of customer reviews into sentiment + extracted topics
 
 `OpenAI API` `pandas` `Streamlit` `structured output parsing`
 
-### 💰 Breakeven ROAS Calculator
-**`marketing-analytics/breakeven_roas.py`**
-
-Margin-aware ROAS thresholds for paid media. Answers whether a campaign is actually profitable after contribution margin — not just whether the platform dashboard looks good.
-
-*The decision it supports:* "Is this campaign making or losing money?"
 
 ### 🧪 A/B Test Sample Size Calculator
 **`experimentation/sample_size_calculator.py`**
