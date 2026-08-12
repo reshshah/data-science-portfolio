@@ -44,8 +44,6 @@ Two-sample power analysis for experiment design: minimum detectable effect, base
 
 Unsupervised segmentation applied to real estate data — clustering methodology transferable to customer base segmentation.
 
-### Production ML System
-** Looking for production ML systems work? More to come here: [AgentOps — Multi-Agent Churn Prediction](https://github.com/reshshah/agentops-churn-prediction)
 ---
 
 ## Running Any Tool
