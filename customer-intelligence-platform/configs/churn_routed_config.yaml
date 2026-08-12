@@ -1,0 +1,24 @@
+name: churn
+target: churn_label_180d
+
+# Customers at or below this tenure are scored by the cold-start model instead
+# of the primary model. Selected by sweeping thresholds on validation ROC-AUC —
+# see docs/MODEL_METRICS_NOTES.md.
+tenure_threshold_days: 90
+
+paths:
+  data_dir: data/ml
+  metadata_file: data/ml/feature_metadata.json
+  output_dir: outputs
+  cold_start_model: outputs/churn/logistic_regression/models/logistic_regression.pkl
+  primary_model: outputs/churn/lightgbm/models/lightgbm.pkl
+
+threshold:
+  metric: f1
+  search_min: 0.05
+  search_max: 0.96
+  search_step: 0.01
+
+logging:
+  level: INFO
+  file: outputs/logs/train_churn_routed.log

@@ -1,0 +1,27 @@
+name: churn
+target: churn_label_180d
+random_state: 42
+
+paths:
+  data_dir: data/ml
+  metadata_file: data/ml/feature_metadata.json
+  output_dir: outputs
+
+model:
+  type: lightgbm
+  n_estimators: 200
+  num_leaves: 15
+  max_depth: -1
+  learning_rate: 0.05
+  min_child_samples: 10
+  class_weight: balanced
+
+threshold:
+  metric: f1
+  search_min: 0.05
+  search_max: 0.96
+  search_step: 0.01
+
+logging:
+  level: INFO
+  file: outputs/logs/train_churn_lightgbm.log

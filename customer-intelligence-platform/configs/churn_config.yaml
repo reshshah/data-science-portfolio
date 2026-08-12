@@ -1,0 +1,23 @@
+name: churn
+target: churn_label_180d
+random_state: 42
+
+paths:
+  data_dir: data/ml
+  metadata_file: data/ml/feature_metadata.json
+  output_dir: outputs
+
+model:
+  type: logistic_regression
+  class_weight: balanced
+  max_iter: 2000
+
+threshold:
+  metric: f1
+  search_min: 0.05
+  search_max: 0.96
+  search_step: 0.01
+
+logging:
+  level: INFO
+  file: outputs/logs/train_churn.log

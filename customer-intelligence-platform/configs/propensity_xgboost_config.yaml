@@ -1,0 +1,29 @@
+name: propensity
+target: purchase_label_30d
+random_state: 42
+
+paths:
+  data_dir: data/ml_purchase
+  metadata_file: data/ml_purchase/feature_metadata.json
+  output_dir: outputs
+
+model:
+  type: xgboost
+  n_estimators: 200
+  max_depth: 3
+  learning_rate: 0.05
+  subsample: 0.8
+  colsample_bytree: 0.8
+  min_child_weight: 5
+  reg_lambda: 1.0
+  balance_classes: true
+
+threshold:
+  metric: f1
+  search_min: 0.05
+  search_max: 0.96
+  search_step: 0.01
+
+logging:
+  level: INFO
+  file: outputs/logs/train_propensity_xgboost.log
