@@ -8,7 +8,7 @@ An end-to-end machine learning platform that turns raw customer data (orders, we
 | **Propensity** | `purchase_label_30d` | Binary classification |
 | **Uplift** | Treatment effect on churn | Causal ML (X-learner) |
 
-The dataset is **synthetic and demo-scale (200 customers)** by design. The architecture — config-driven training, point-in-time-correct snapshots, feature store, routed models — is the artifact; the data is a prop.
+The dataset is **synthetic and demo-scale** by design. The architecture — config-driven training, point-in-time-correct snapshots, feature store, routed models — is the artifact; the data is a prop.
 
 ## System Data Flow
 
