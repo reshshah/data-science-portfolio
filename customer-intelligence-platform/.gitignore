@@ -1,0 +1,10 @@
+customer-intelligence-env/
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+.pytest_cache/
+.DS_Store
+outputs/
+data/raw/*.csv
+data/raw/*.xlsx
+data/ml/_splits/

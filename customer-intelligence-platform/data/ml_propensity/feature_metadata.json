@@ -1,5 +1,5 @@
 {
-  "target": "churn_label_180d",
+  "target": "propensity_label_30d",
   "target_type": "binary",
   "identifier_columns": [
     "customer_id",
@@ -22,7 +22,7 @@
   "train_rows": 35408,
   "validation_rows": 13870,
   "test_rows": 9884,
-  "train_positive_rate": 0.3973395842747402,
-  "validation_positive_rate": 0.5419610670511896,
-  "test_positive_rate": 0.5057668959935249
+  "train_positive_rate": 0.2536150022593764,
+  "validation_positive_rate": 0.15847152126892575,
+  "test_positive_rate": 0.18251719951436665
 }

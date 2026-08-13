@@ -1,10 +1,10 @@
 name: propensity
-target: purchase_label_30d
+target: propensity_label_30d
 random_state: 42
 
 paths:
-  data_dir: data/ml_purchase
-  metadata_file: data/ml_purchase/feature_metadata.json
+  data_dir: data/ml_propensity
+  metadata_file: data/ml_propensity/feature_metadata.json
   output_dir: outputs
 
 model:

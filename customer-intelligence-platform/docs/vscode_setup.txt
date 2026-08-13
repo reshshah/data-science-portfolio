@@ -1,0 +1,69 @@
+## VSC terminal commands to start a new virtual env where we will load all the python open source packages
+
+## every new session run
+source customer-intelligence-env/bin/activate
+
+
+## One time setup:
+python3 --version
+
+## create an env
+python3 -m venv customer-intelligence-env
+
+## Activate it
+source customer-intelligence-env/bin/activate
+
+## Dump these into requirements.txt
+pandas
+numpy
+polars
+faker
+matplotlib
+plotly
+jupyter
+ipykernel
+scikit-learn
+xgboost
+lightgbm
+duckdb
+sqlalchemy
+pyarrow
+fastparquet
+networkx
+pgmpy
+pymc
+prophet
+shap
+mlflow
+feast
+
+## Install everything
+pip install -r requirements.txt
+
+## Tell VS Code to use this environment
+
+In VS Code:
+
+Press ⌘ + Shift + P
+Type:
+Python: Select Interpreter
+Select the interpreter that looks like:
+./customer-intelligence-env/bin/python
+
+From now on, VS Code will run your code using this environment.
+
+## Test it
+Create a file named test.py:
+
+import pandas as pd
+import numpy as np
+import duckdb
+import sklearn
+import xgboost
+
+print("Everything works!")
+print(pd.__version__)
+
+## How to run .py files from the terminal in VS Code
+cd "/Users/rshah/customer intelligence platform"
+python3 pipelines/build_retail_features.py
