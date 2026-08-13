@@ -4,11 +4,80 @@ How the models in this platform get from `outputs/` into something a business sy
 
 ## Serving mode: why batch for churn, real-time for propensity
 
+---
+
+## Two serving paths, one model bundle
+
+```mermaid
+flowchart LR
+    subgraph Training
+        A[Raw transactions] --> B[Point-in-time snapshots]
+        B --> C[Train + evaluate]
+        C --> D[(Model registry<br/>immutable versions)]
+    end
+
+    D --> E[Batch: churn]
+    D --> F[Real-time: propensity]
+
+    subgraph Batch path
+        E --> G[Nightly job<br/>score all customers]
+        G --> H[(Scores table)]
+        H --> I[Campaign tools / CRM]
+    end
+
+    subgraph Real-time path
+        F --> J[FastAPI endpoint<br/>/predict]
+        J --> K[Session decision:<br/>offer, ranking, message]
+    end
+
+    style D fill:#e8f0fe,stroke:#4285f4
+    style H fill:#e6f4ea,stroke:#34a853
+    style K fill:#fef7e0,stroke:#fbbc04
+```
+
+Both paths load the same bundle through `serving/model_loader.py`, so promoting a model to either mode requires no retraining and no code change — only a registry pointer.
+
+## Choosing the path: latency tolerance drives the design
+
+| | **Churn → batch** | **Propensity → real-time** |
+|---|---|---|
+| When the answer is needed | Before tomorrow's campaign send | Within a page load |
+| Latency tolerance | Hours — the job can run all night | Milliseconds — p99 budget of 50ms |
+| Freshness required | Daily is plenty; 180-day risk moves slowly | Must reflect the current session |
+| Consumer | CRM, campaign tools pulling a list | Web/app making a live decision |
+| Failure mode | Job fails → rerun it, nobody notices | Endpoint slow → user sees a worse page |
+| Cost profile | Cheap: one big job, no idle capacity | Pays for idle capacity to absorb spikes |
+| Scaling lever | Bigger box or chunked processing | More replicas behind a load balancer |
+
+The rule of thumb: **if the decision can wait, batch it.** Real-time serving costs more in infrastructure, monitoring, and on-call burden, so it should be reserved for decisions that genuinely can't wait. Churn can't justify that cost; in-session propensity can.
+
+### Measured latency
+
+`serving/benchmark.py`, 400 sequential requests against a single uvicorn process:
+
+| Metric | Value |
+|---|---|
+| p50 | 1.15 ms |
+| p95 | 1.35 ms |
+| p99 | 1.57 ms |
+| max | 2.82 ms |
+| Throughput | ~846 req/s (single process, no concurrency) |
+
+Two caveats worth stating out loud: this is a local loopback measurement with no network hop, no feature-store lookup, and no concurrency — so it's a **floor**, not a production SLO. In production the dominant cost would be the feature fetch, not the model. And a linear model is cheap; a gradient-boosted ensemble would move p99 into the 5-15ms range, still comfortably inside a 50ms budget.
+
+Reproduce with:
+
+```bash
+uvicorn serving.api:app --port 8000     # terminal 1
+python -m serving.benchmark --n 500     # terminal 2
+```
+
 Churn scores change slowly (a customer's 180-day risk doesn't move minute to minute) and are consumed by campaign tools that pull lists on a schedule. That makes a **nightly batch job** the right default: cheaper, easier to monitor, and trivially re-runnable if a scoring run is wrong.
 
 Purchase propensity is different — it's most useful *during* a session, when the decision (what to show, whether to offer an incentive) is being made. That argues for a **low-latency endpoint** with a strict latency budget.
 
 Both modes here load the identical model bundle through the same loader, so a model can be promoted to either without retraining. `serving/batch_score.py` is the batch path; `serving/api.py` is the real-time path.
+
 
 ## Model registry: versioned, immutable, self-describing
 
