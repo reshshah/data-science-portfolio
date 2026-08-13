@@ -16,7 +16,7 @@
   ],
   "categorical_features": [],
   "boolean_features": [],
-  "splits_dir": "/Users/rshah/customer intelligence platform/data/ml/_splits",
+  "splits_dir": "/Users/rshah/data-science-portfolio/customer-intelligence-platform/data/ml/_splits",
   "train_end": "2011-01-01",
   "validation_end": "2011-04-01",
   "train_rows": 35408,

@@ -1,4 +1,15 @@
 #!/usr/bin/env python3
+"""Cross-validated hyperparameter search for a binary classifier, from a
+config file with a "tuning" section on top of the usual "model" section.
+
+The search happens entirely within train (StratifiedKFold), never touching
+validation or test. The winning pipeline is then refit on the full
+training set and evaluated exactly the same way models/train_classifier.py
+evaluates a manually-configured model, so results are directly comparable.
+
+Run:
+    python3 models/tune_classifier.py --config configs/churn_lightgbm_tuned_config.yaml
+"""
 import argparse
 import logging
 import sys
@@ -7,6 +18,7 @@ from pathlib import Path
 import joblib
 import mlflow
 import mlflow.sklearn
+import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -18,19 +30,22 @@ from src.plots import feature_importance, plot_feature_importance, plot_roc_pr
 from src.preprocessing import split_xy
 from src.reporting import print_summary, save_json, save_predictions
 from src.tracking import log_config_params, log_metrics, start_run
-from src.trainer import train_dummy, train_model
+from src.trainer import train_dummy
+from src.tuning import run_hyperparameter_search
 from src.utils import get_project_root, load_config, setup_logging
 
 logger = logging.getLogger(__name__)
 
 
 def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train a binary classifier from a config file.")
+    parser = argparse.ArgumentParser(
+        description="Cross-validated hyperparameter search for a binary classifier."
+    )
     parser.add_argument(
         "--config",
         type=Path,
-        default=Path("configs/churn_config.yaml"),
-        help="Path to the model config YAML (relative to project root).",
+        required=True,
+        help="Path to a config with a 'tuning' section (relative to project root).",
     )
     return parser.parse_args()
 
@@ -68,16 +83,43 @@ def main():
     X_valid, y_valid = split_xy(valid, target, numeric_features, categorical_features)
     X_test, y_test = split_xy(test, target, numeric_features, categorical_features)
 
-    with start_run(config, root):
+    with start_run(config, root, run_name=f"{model_type}_tuned"):
         log_config_params(config)
+        tuning_cfg = config["tuning"]
+        mlflow.log_params({
+            "tuning__cv_folds": tuning_cfg.get("cv_folds", 5),
+            "tuning__n_iter": tuning_cfg.get("n_iter", 20),
+            "tuning__scoring": tuning_cfg.get("scoring", "roc_auc"),
+        })
+
+        logger.info(
+            "Searching %d hyperparameter combinations, %d-fold CV, scoring=%s",
+            tuning_cfg.get("n_iter", 20),
+            tuning_cfg.get("cv_folds", 5),
+            tuning_cfg.get("scoring", "roc_auc"),
+        )
+        search = run_hyperparameter_search(
+            X_train, y_train, numeric_features, categorical_features, config
+        )
+        pipe = search.best_estimator_
+
+        cv_results = pd.DataFrame(search.cv_results_).sort_values("rank_test_score")
+        cv_results.to_csv(metric_dir / "cv_results.csv", index=False)
+        save_json(
+            {"best_cv_score": float(search.best_score_), "best_params": search.best_params_},
+            metric_dir / "best_params.json",
+        )
+        mlflow.log_metric("best_cv_score", float(search.best_score_))
+        mlflow.log_params({
+            f"best__{k.replace('model__', '')}": v for k, v in search.best_params_.items()
+        })
+        logger.info("Best CV %s: %.4f | params: %s", tuning_cfg.get("scoring", "roc_auc"), search.best_score_, search.best_params_)
 
         dummy = train_dummy(X_train, y_train)
         dummy_prob = dummy.predict_proba(X_valid)[:, 1]
         dummy_metrics = compute_metrics(y_valid, dummy.predict(X_valid), dummy_prob)
         save_json(dummy_metrics, metric_dir / "dummy_validation.json")
         log_metrics("dummy_validation", dummy_metrics)
-
-        pipe = train_model(X_train, y_train, numeric_features, categorical_features, config)
 
         val_prob = pipe.predict_proba(X_valid)[:, 1]
         threshold, _ = best_threshold(y_valid, val_prob, config)
@@ -97,9 +139,6 @@ def main():
         log_metrics("test", test_metrics)
 
         joblib.dump(pipe, model_dir / f"{model_type}.pkl")
-        # skops (MLflow's default sklearn serialization) rejects XGBoost/
-        # LightGBM's custom types as untrusted; pickle matches what we
-        # already save above and works uniformly across all model types.
         mlflow.sklearn.log_model(pipe, name="model", serialization_format="pickle")
 
         fi = feature_importance(pipe)
@@ -114,7 +153,8 @@ def main():
         for artifact in metric_dir.glob("*.csv"):
             mlflow.log_artifact(str(artifact), artifact_path="metrics")
 
-        print_summary(dummy_metrics, val_metrics, test_metrics, threshold, output_dir)
+        print_summary(dummy_metrics, val_metrics, test_metrics, threshold, output_dir, title="Tuning Complete")
+        logger.info("Best params: %s", search.best_params_)
 
 
 if __name__ == "__main__":

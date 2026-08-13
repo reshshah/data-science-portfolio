@@ -174,6 +174,93 @@ correcting the last, summed together (that's boosting). So routing, when
 it *does* help, is routing between one ensemble model and one simple
 linear model, not ensembling two things together.
 
+## SHAP: which features actually drive each model?
+
+`mean(|SHAP value|)` (`src/explain.py`) gives an importance ranking
+that's comparable across model types, unlike raw coefficients (only
+meaningful for linear models) or split-gain (only meaningful for trees).
+For the best model on each task (logistic regression):
+
+| Rank | Churn feature | mean &#124;SHAP&#124; | Propensity feature | mean &#124;SHAP&#124; |
+|---|---|---|---|---|
+| 1 | `recency_days` | 0.695 | `recency_days` | 0.426 |
+| 2 | `tenure_days` | 0.426 | `frequency_90d` | 0.265 |
+| 3 | `frequency_90d` | 0.242 | `tenure_days` | 0.276 |
+| 4 | `distinct_products_90d` | 0.093 | `distinct_products_90d` | 0.048 |
+| 5–7 | `monetary_90d`, `avg_basket_value_90d`, `return_rate_90d` | all < 0.02 | same three | all < 0.02 |
+
+`recency_days` dominates both models by a wide margin — unsurprising
+(it's the most direct signal of "has this customer gone quiet"), but worth
+confirming rather than assuming, since it means the other 6 features are
+doing comparatively little work. The beeswarm plot
+(`outputs/<task>/logistic_regression/plots/shap_summary.png`) adds
+direction on top of this ranking: high `recency_days` (red, further from a
+recent purchase) pushes churn probability up and propensity probability
+down, in the expected direction for both.
+
+## Decile table: what "acting on the top N%" actually gets you
+
+The decile table (`src/calibration.compute_decile_table`) answers the
+question ROC-AUC/PR-AUC don't: concretely, what do you catch if you act on
+a ranked list? For churn logistic regression, test set:
+
+| Decile | Actual churn rate | Lift over baseline | Cumulative churners captured |
+|---|---|---|---|
+| 1 (highest risk) | 89.2% | 1.76x | 17.6% |
+| 2 | 78.9% | 1.56x | 33.2% |
+| 3 | 73.1% | 1.44x | 47.7% |
+| 5 | 53.4% | 1.06x | 71.3% |
+| 10 (lowest risk) | 5.5% | 0.11x | 100.0% |
+
+Reading this operationally: contacting just the top 30% by predicted risk
+(deciles 1–3) reaches customers who are churning at 73–89% actual rates
+(vs. the 50.6% overall base rate) and captures 47.7% of everyone who will
+actually churn. The bottom decile is churning at only 5.5% — a strong
+signal that a retention program should *not* spend budget there, distinct
+from what a single aggregate ROC-AUC number can tell you.
+
+## Calibration: is a predicted 0.7 really "70%"?
+
+For churn logistic regression, predicted-vs-actual tracks closely across
+the full range (e.g. mean predicted 0.86 in the top bin vs. 89.2% actual;
+mean predicted 0.10 in the bottom bin vs. 5.5% actual) — reasonably
+well-calibrated, not just well-ranked. That's a meaningful distinction:
+`class_weight="balanced"` (used to handle the class imbalance during
+*training*) can distort predicted probabilities away from true rates even
+when ranking (ROC-AUC/PR-AUC/lift) stays strong, so calibration isn't
+implied by good ranking metrics — it's worth checking separately, and here
+it happens to hold up.
+
+## Hyperparameter tuning: more search isn't automatically better
+
+Ran `RandomizedSearchCV` (20 trials, 5-fold CV, scoring on train only) over
+LightGBM's `n_estimators`/`num_leaves`/`max_depth`/`learning_rate`/
+`min_child_samples`
+(`configs/churn_lightgbm_tuned_config.yaml`). Result:
+
+| | Hand-set LightGBM | Tuned LightGBM | Logistic Regression |
+|---|---|---|---|
+| Best CV ROC-AUC (train) | — | 0.758 | — |
+| Test ROC-AUC | 0.776 | **0.755** | 0.797 |
+| Test PR-AUC | 0.756 | **0.736** | 0.782 |
+
+The tuned model is *worse* on held-out test than the model it was supposed
+to improve on. The winning combination (`num_leaves=63, max_depth=8,
+n_estimators=300`) is meaningfully more complex than the hand-set config
+(`num_leaves=15, max_depth=-1` i.e. unlimited but shallow-by-`num_leaves`,
+`n_estimators=200`) — the wider search space let the search find
+combinations that scored well on 5-fold CV within train but didn't
+generalize as well to test. This is the same throughline as the
+seen-vs-new-customer cold-start finding above, one level up: with ~35K
+training rows and 7 features, there's enough data for a simple model to
+generalize cleanly, but tree-model capacity can still outrun what CV alone
+protects against here. **Takeaway: tuning optimizes exactly the objective
+and search space handed to it — it isn't a free way to close the gap with
+logistic regression on this dataset**, and a narrower search space
+(closer to the hand-set config) or more regularization-heavy bounds might
+tell a different story. Worth revisiting if this becomes the production
+candidate; not a priority while logistic regression is winning outright.
+
 ## What happened to the CLV section?
 
 An earlier version of this project had a `future_revenue_180d` regression

@@ -8,3 +8,6 @@ outputs/
 data/raw/*.csv
 data/raw/*.xlsx
 data/ml/_splits/
+mlruns/
+mlruns.db
+mlartifacts/
