@@ -1,7 +1,9 @@
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import shap
 from sklearn.metrics import precision_recall_curve, roc_curve
 
 
@@ -63,4 +65,62 @@ def plot_feature_importance(fi: pd.DataFrame, plot_dir: Path, top_n: int = 20) -
     plt.barh(top["feature"], top["coefficient"])
     plt.tight_layout()
     plt.savefig(plot_dir / "feature_importance.png")
+    plt.close()
+
+
+def plot_shap_summary(shap_values: np.ndarray, X_transformed: pd.DataFrame, plot_dir: Path) -> None:
+    """Beeswarm plot: every point is one (observation, feature) SHAP value --
+    shows both magnitude and direction of each feature's effect, unlike a
+    single mean-|SHAP| bar."""
+    plt.figure()
+    shap.summary_plot(shap_values, X_transformed, show=False, plot_size=(8, 6))
+    plt.tight_layout()
+    plt.savefig(plot_dir / "shap_summary.png")
+    plt.close()
+
+
+def plot_calibration_curve(calibration_df: pd.DataFrame, plot_dir: Path) -> None:
+    plt.figure(figsize=(6, 6))
+    plt.plot(
+        calibration_df["mean_predicted_probability"],
+        calibration_df["actual_positive_rate"],
+        marker="o",
+        label="Model",
+    )
+    plt.plot([0, 1], [0, 1], "--", color="gray", label="Perfectly calibrated")
+    plt.xlabel("Mean predicted probability")
+    plt.ylabel("Actual positive rate")
+    plt.title("Calibration Curve")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(plot_dir / "calibration_curve.png")
+    plt.close()
+
+
+def plot_lift_chart(decile_table: pd.DataFrame, plot_dir: Path) -> None:
+    plt.figure(figsize=(6, 4))
+    plt.bar(decile_table["decile"], decile_table["lift"])
+    plt.axhline(1.0, color="gray", linestyle="--", label="Baseline (no model)")
+    plt.xlabel("Decile (1 = highest predicted probability)")
+    plt.ylabel("Lift over baseline")
+    plt.title("Lift Chart")
+    plt.xticks(decile_table["decile"])
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(plot_dir / "lift_chart.png")
+    plt.close()
+
+
+def plot_gain_chart(decile_table: pd.DataFrame, plot_dir: Path) -> None:
+    x = [0.0] + decile_table["cumulative_population_rate"].tolist()
+    y = [0.0] + decile_table["cumulative_capture_rate"].tolist()
+    plt.figure(figsize=(6, 6))
+    plt.plot(x, y, marker="o", label="Model")
+    plt.plot([0, 1], [0, 1], "--", color="gray", label="Random")
+    plt.xlabel("Cumulative population targeted")
+    plt.ylabel("Cumulative positives captured")
+    plt.title("Cumulative Gains Chart")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(plot_dir / "gain_chart.png")
     plt.close()

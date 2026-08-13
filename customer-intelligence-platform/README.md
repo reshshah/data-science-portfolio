@@ -157,9 +157,18 @@ lightgbm, pyyaml, joblib, matplotlib, pytest.
    so the tenure-routed ensemble (`churn_routed_config.yaml`) is currently
    *not* recommended over plain logistic regression (kept as a working
    example of the mechanism) — see `docs/MODEL_METRICS_NOTES.md`
-8. Model Explainability (SHAP)
-9. Calibration curves, lift/gain chart, decile analysis
-10. Hyperparameter tuning, cross-validation, MLflow run tracking
+8. ✔ Model Explainability (SHAP) — `mean(|SHAP value|)` importance +
+   beeswarm plots for every trained model; `recency_days` dominates both
+   churn and propensity by a wide margin — see `docs/MODEL_METRICS_NOTES.md`
+9. ✔ Calibration curves, lift/gain chart, decile analysis — churn logistic
+   regression is well-calibrated, not just well-ranked; top 3 deciles by
+   risk capture 47.7% of actual churners
+10. ✔ Hyperparameter tuning, cross-validation, MLflow run tracking —
+    `models/tune_classifier.py` (RandomizedSearchCV + StratifiedKFold) and
+    `src/tracking.py` (local MLflow store). Notable finding: the tuned
+    LightGBM example scored *worse* on test (0.755 ROC-AUC) than the
+    hand-set config (0.776) — tuning isn't free signal on this dataset,
+    see `docs/MODEL_METRICS_NOTES.md`
 
 **Not currently planned:** CLV/regression and uplift/causal modeling were
 built against the earlier synthetic dataset and removed when the project

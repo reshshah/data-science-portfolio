@@ -48,15 +48,18 @@ pipelines/prepare_retail_ml_dataset.py  (--target selects the label;
 MODEL-READY DATA  (data/ml/, data/ml_propensity/ — train/validation/test
                     parquet + feature_metadata.json)
    ↓
-configs/   (declares task, target, model type, hyperparameters, threshold search)
+configs/   (declares task, target, model type, hyperparameters, threshold
+            search, and optionally a hyperparameter search space)
    ↓
-models/    (train_classifier.py, predict_churn_routed.py)
+models/    (train_classifier.py, tune_classifier.py, predict_churn_routed.py)
    ↓
-src/       (reusable engine: loading, validation, preprocessing, training, evaluation)
+src/       (reusable engine: loading, validation, preprocessing, training,
+            tuning, evaluation, explainability, calibration, tracking)
    ↓
 MODEL TRAINING
    ↓
 outputs/   (pickled models, metrics JSON, predictions, plots, logs)
+mlruns.db / mlruns/  (MLflow run history + artifacts, local SQLite store)
 ```
 
 Each arrow is a script you can run independently. Rebuilding downstream
@@ -140,29 +143,41 @@ not recommended over plain logistic regression on this dataset — see
 
 Small, single-purpose, importable modules shared by every entry point:
 `data_loader`, `feature_validation`, `preprocessing`, `trainer`,
-`evaluator`, `routing`, `plots`, `reporting`, `utils`. No entry-point
-script contains modeling logic — it all lives here. (`trainer.py` and
-`evaluator.py` still carry generic regression support, unused by the
-current classification-only targets — see `MODELING_GUIDE.md`.)
+`evaluator`, `routing`, `plots`, `reporting`, `utils`, `explain` (SHAP),
+`calibration` (calibration curve + decile/lift/gain), `diagnostics`
+(bundles the two above for the training entry points), `tuning`
+(cross-validated hyperparameter search), `tracking` (MLflow). No
+entry-point script contains modeling logic — it all lives here.
+(`trainer.py` and `evaluator.py` still carry generic regression support,
+unused by the current classification-only targets — see
+`MODELING_GUIDE.md`.)
 
 ### `models/` — Training/prediction entry points
 
-Thin CLI wrappers around `src/`: `train_classifier.py` (churn,
-propensity), `predict_churn_routed.py` (tenure-routed scoring). Both take
-`--config <path>`.
+Thin CLI wrappers around `src/`: `train_classifier.py` (fixed
+hyperparameters), `tune_classifier.py` (CV hyperparameter search, then the
+same evaluation as `train_classifier.py`), `predict_churn_routed.py`
+(tenure-routed scoring). All take `--config <path>`.
 
 ### `outputs/` — Model artifacts/results
 
 Generated per task/model: `models/` (pickles), `metrics/` (validation +
-test JSON, feature importance), `predictions/` (scored CSVs), `plots/`
-(ROC/PR, importance), `logs/`. Gitignored — regenerate by rerunning
-`models/` scripts. Never edited by hand.
+test JSON, feature/SHAP importance, calibration table, decile table, and
+for tuning runs, `cv_results.csv`/`best_params.json`), `predictions/`
+(scored CSVs), `plots/` (ROC/PR, feature importance, SHAP summary,
+calibration curve, lift/gains charts), `logs/`. Gitignored — regenerate by
+rerunning `models/` scripts. Never edited by hand. `mlruns.db`/`mlruns/`
+(MLflow's local run-tracking store, also gitignored) capture the same
+metrics/artifacts across every run for side-by-side comparison — see
+`MODELING_GUIDE.md`.
 
 ### `tests/` — Automated testing
 
 Pytest suite covering point-in-time feature construction (the
 leakage-safety guarantees), preprocessing, regression-engine internals,
-and routing logic. Run with `pytest` from the project root.
+routing logic, SHAP explainability, calibration/decile computation,
+hyperparameter search, and MLflow tracking. Run with `pytest` from the
+project root.
 
 ### `scripts/` — Ad hoc exploration
 
@@ -201,6 +216,18 @@ python3 models/train_classifier.py --config configs/churn_lightgbm_config.yaml
 
 ```bash
 python3 models/predict_churn_routed.py --config configs/churn_routed_config.yaml
+```
+
+**Run a hyperparameter search:**
+
+```bash
+python3 models/tune_classifier.py --config configs/churn_lightgbm_tuned_config.yaml
+```
+
+**Browse MLflow run history:**
+
+```bash
+mlflow ui --backend-store-uri sqlite:///mlruns.db
 ```
 
 **Run tests:**
