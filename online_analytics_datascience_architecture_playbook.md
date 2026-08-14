@@ -1,4 +1,4 @@
-# Online Data & Analytics — Architecture & Analytical Playbook
+# Online Analytics & Data Science — Architectur Playbook
 
 ## 1. Objective
 
