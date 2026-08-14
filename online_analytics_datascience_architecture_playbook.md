@@ -193,10 +193,10 @@ Then drill deeper:
 
 ```text
 Traffic
-├── Paid
 ├── Organic
-├── Direct
-└── CRM
+├── Paid: SEM, Display Ads, Affiliates, Social
+├── Unpaid: SEO, Email, SMS, Push, AEO
+
 
 Conversion
 ├── Device
