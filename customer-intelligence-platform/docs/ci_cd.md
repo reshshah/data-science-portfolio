@@ -11,372 +11,132 @@ every project in the monorepo (`attribution/`, `customer-intelligence-platform/`
 
 I think about production machine learning as the **end-to-end system**: data → features → training → validation → deployment → monitoring, with **privacy, scalability, reproducibility, and reliability built into every layer.**
 
-## 1. Move From Notebooks to Modular Production Code
+This can be explained across six areas: code, scale, testing, reproducibility, deployment, and privacy.I typically start with the data in BigQuery and use SQL to do the heavy data processing and feature creation. One advantage of BigQuery is that it already gives me a distributed, scalable compute layer, so if I'm working with hundreds of millions of customer transactions or events, I don't necessarily need to move all that data locally to process it.
 
-Notebooks are great for exploration and experimentation, but I wouldn't treat them as production systems.
+Once I know the model works, I modularize the Python code so feature engineering, training, and evaluation are independently testable. I separate configuration from the code, put automated tests around the data and pipeline, and use something like MLflow so every model can be traced back to its code, configuration, training data, and evaluation metrics. Then CI/CD becomes the safety net before anything reaches production. And especially with consumer data, privacy needs to be part of the architecture from the beginning—minimize the data I'm using and avoid moving sensitive data unnecessarily.
 
-I would move the model into a modular architecture:
+Here is how I scale my model: Because I work with BigQuery, my first approach would be to push the heavy computation down to BigQuery rather than extracting massive datasets into Python. BigQuery gives me distributed compute for the joins, aggregations and feature engineering. I can then train the model in Python, or for appropriate use cases use BigQuery ML and keep training and inference closer to the data. That also has a privacy benefit because I'm minimizing unnecessary movement of customer-level data
 
-```text
-src/
-├── data/
-├── features/
-├── preprocessing/
-├── models/
-├── evaluation/
-├── privacy/
-└── monitoring/
+1. Is the code production-ready?
 
-configs/
-├── model_config.yaml
-└── data_config.yaml
+BigQuery + SQL → Modular Python code → Configuration
 
-tests/
-pipelines/
-outputs/
-```
+I typically start with the data in BigQuery, where I use SQL for data exploration, joins, aggregations, and initial feature creation.
 
-The goal is **separation of concerns**.
+For the ML components, I structure the Python code into separate, testable modules:
 
-Feature engineering, preprocessing, training, evaluation, privacy checks, and monitoring should be independent, reusable, testable modules.
+Feature engineering → Preprocessing → Model training → Evaluation
 
-Configuration should also be separated from business logic. YAML files can define things like:
+I also separate configuration from the actual code. YAML files can store things like data paths, feature definitions, hyperparameter ranges, and model thresholds.
 
-* Data locations
-* Feature definitions
-* Hyperparameter ranges
-* Training windows
-* Evaluation thresholds
-* Privacy or governance rules
+This makes the code easier to test, maintain, reuse, and scale across different models.
 
-That means I can change how a model is configured without rewriting the underlying production code.
+Example:
 
----
+“I separate the data processing, model logic, and configuration so each component can be independently tested and changed without impacting the entire pipeline.”
 
-# 2. Build Privacy Into the Architecture
+2. Can it handle scale?
 
-For large-scale consumer ML, I would treat privacy as a **design constraint rather than a compliance check at the end**.
+BigQuery → Large-scale data processing → Model-ready dataset
 
-I would start with **data minimization**:
+Because the data is already in BigQuery, I push the heavy computation down to BigQuery rather than pulling hundreds of millions of rows into Python.
 
-> What is the minimum amount of data the model actually needs to solve the problem?
+BigQuery handles the distributed processing behind the scenes.
 
-That means avoiding unnecessary PII, using pseudonymous identifiers where appropriate, limiting feature retention, enforcing access controls, and ensuring sensitive attributes don't accidentally enter training datasets.
+I use SQL for:
 
-I would also think about whether learning needs to happen centrally at all.
+Large joins → Aggregations → Feature creation → Training dataset creation
 
-Depending on the use case, architectures could include:
+For example, if I have hundreds of millions of customer transactions or behavioral events, I can use BigQuery to turn those into customer-level features such as:
 
-**On-device inference**
+90-day spend | purchase frequency | category engagement | site activity | marketing engagement
 
-Keep computation close to the user whenever the device has sufficient compute.
+Python can then work with the resulting model-ready dataset rather than processing all the raw events.
 
-**Federated learning**
+For appropriate use cases, BigQuery ML can also train and score models directly where the data lives.
 
-Instead of centralizing raw user data, models can learn from distributed devices and aggregate model updates.
+Example:
 
-**Differential privacy**
+“I push the heavy computation to BigQuery. That gives me scalable distributed processing without having to move massive raw datasets into Python.”
 
-Introduce mathematically controlled noise into aggregated information so useful population-level patterns can be learned while reducing the ability to infer information about an individual.
+3. Can I trust the pipeline?
 
-**Secure aggregation**
+Unit tests + Data tests + Schema tests
 
-The server can aggregate model updates without needing visibility into an individual device's contribution.
-
-The architectural principle is:
-
-> **Move computation toward the data whenever possible rather than automatically moving data toward computation.**
-
----
-
-# 3. PySpark Provides the Distributed Data Layer
-
-Once you're operating across millions of customers, events, transactions, impressions, or device interactions, pandas-based pipelines can become a bottleneck.
-
-This is where **PySpark** becomes important.
-
-Spark partitions large datasets across a cluster and processes those partitions in parallel.
-
-Instead of:
-
-```text
-1 machine
-    ↓
-500M rows
-    ↓
-Feature Engineering
-```
-
-I can distribute the workload:
-
-```text
-                Dataset
-                   ↓
-          Distributed Partitions
-         ↙         ↓          ↘
-      Worker 1   Worker 2   Worker N
-         ↘         ↓          ↙
-            Feature Dataset
-```
-
-That lets the same architecture scale across:
-
-* Feature engineering
-* Large joins
-* Aggregations
-* Training dataset construction
-* Historical backfills
-* Batch inference
-* Model scoring
-
-For example, instead of calculating 90-day customer behavior sequentially across hundreds of millions of events, Spark distributes that computation across many workers.
-
-The important distinction is:
-
-> **Spark doesn't necessarily make the model itself scalable—it makes the data and feature pipeline feeding the model scalable.**
-
-For algorithms that support distributed training, the compute layer can also distribute model training.
-
----
-
-# 4. Test the Pipeline, Not Just Model Accuracy
-
-One of the biggest differences between experimental ML and production ML is testing.
-
-I'm not only asking:
-
-> "Does the model have good AUC?"
-
-I'm asking:
-
-> "Can I trust the system producing the model?"
-
-For example, I would write tests ensuring that:
-
-**Schema contracts haven't changed.**
-
-If an upstream team changes:
-
-```text
-customer_order_date
-```
-
-to:
-
-```text
-cust_ord_dt
-```
-
-the pipeline should fail immediately rather than silently generating incorrect features.
-
-**Categorical encoders handle unseen categories.**
-
-If a new category appears in production that wasn't present during training, the inference pipeline should handle it predictably rather than failing or silently dropping records.
-
-**Feature distributions remain reasonable.**
+I'm not just testing whether the model is accurate. I'm testing whether I can trust the data and pipeline producing that model.
 
 For example:
 
-```text
-historical average_order_value = $75
+Did an upstream column name change?
+Did a new categorical value appear?
+Did null rates suddenly increase?
+Did a feature distribution change dramatically?
+Did something introduce data leakage?
 
-production average_order_value = $7,500
-```
+These issues should be caught automatically before they affect the model.
 
-That should trigger investigation.
+Example:
 
-I would test for:
+“Before I trust the model output, I need to trust the data and pipeline producing it.”
 
-* Schema drift
-* Missing values
-* Unexpected categories
-* Feature ranges
-* Duplicate records
-* Data leakage
-* Training-serving skew
-* Distribution drift
+4. Can I reproduce the model?
 
-These tests create **data contracts between upstream data systems and ML systems.**
+Git + YAML + BigQuery data snapshot + MLflow
 
----
+For every production model, I want to know exactly:
 
-# 5. Full Model Reproducibility
+Code + Configuration + Data + Features + Hyperparameters = Model version
 
-Every production prediction should ultimately be traceable back to the system that created it.
+Git tracks the code.
 
-Using an experiment-tracking/model-registry system such as MLflow, I would associate a model with:
+YAML tracks the configuration.
 
-```text
-Model Version
-      ↓
-Git Commit
-      ↓
-YAML Configuration
-      ↓
-Feature Definitions
-      ↓
-Training Data Snapshot
-      ↓
-Hyperparameters
-      ↓
-Evaluation Metrics
-```
+BigQuery provides the training dataset.
 
-That gives the organization lineage.
+And something like MLflow can track experiments, metrics, artifacts, and model versions.
 
-If Model V27 behaves differently from Model V26, I should be able to determine **exactly what changed**.
+So if one model behaves differently from another, I can trace exactly what changed.
 
-That becomes especially important when models affect millions of users.
+Example:
 
----
+“If Model 27 behaves differently from Model 26, I should be able to trace that difference back to the code, configuration, data, or model parameters.”
 
-# 6. CI/CD Creates the Automated Safety Net
+5. Can I deploy changes safely?
 
-If a data scientist pushes a new feature-engineering script, I don't want that code going directly into production.
+GitHub → CI/CD → Tests → Model → Production
 
-The CI/CD pipeline should automatically:
+If I change feature-engineering or model code and push it to GitHub, I don't want that change automatically impacting production.
 
-```text
-Git Push
-   ↓
-Build Container
-   ↓
-Run Unit Tests
-   ↓
-Validate Data Schema
-   ↓
-Run Privacy / Governance Checks
-   ↓
-Train Model
-   ↓
-Evaluate Model
-   ↓
-Compare Against Production Model
-   ↓
-Register Candidate
-   ↓
-Controlled Deployment
-```
+CI/CD provides the safety net:
 
-For example, deployment might require:
+Code change → Unit tests → Schema validation → Data-quality checks → Train → Evaluate → Compare → Deploy
 
-```text
-AUC ≥ threshold
-Calibration within threshold
-No major feature drift
-No schema failures
-Latency ≤ threshold
-Privacy checks passed
-```
+If something fails, the pipeline stops.
 
-Only then does the candidate become eligible for deployment.
+Example:
 
-This gives teams the ability to **move quickly without sacrificing reliability.**
+“CI/CD lets the team iterate faster because we're automating the checks that protect production.”
 
----
+6. Is privacy built into the architecture?
 
-# 7. Scale Models Through Layered Architecture
+I would start with a very simple question:
 
-At very large consumer scale, I wouldn't assume every request should hit a large centralized model.
+“Do I actually need this customer data to solve the problem?”
 
-I would think about a hierarchy:
+That means minimizing the data used and avoiding unnecessary movement of sensitive customer-level data.
 
-```text
-USER / DEVICE
-      ↓
-Can inference happen locally?
-      ↓
-     YES ─────→ On-device model
+BigQuery also helps with this architecture because I can perform large joins, aggregations, and feature creation where the governed data already lives rather than unnecessarily extracting raw customer-level data into other environments.
 
-      NO
-      ↓
-Privacy-preserving compute
-      ↓
-Larger / more complex model
-```
+For certain use cases, I would also think about:
 
-Models can also be optimized for the serving environment through techniques such as:
+On-device inference — Process information locally when possible.
 
-* Quantization
-* Distillation
-* Smaller specialized models
-* Sparse architectures
-* Hardware-aware optimization
-* Distributed training
-* Batch inference
-* Caching
-* Model routing
+Federated learning — Learn across devices without centrally collecting all the raw individual-level data.
 
-The objective isn't simply:
+Differential privacy — Learn population-level patterns while reducing the ability to identify an individual.
 
-> "Build the most accurate model."
+Example:
 
-It is:
-
-> **Find the best tradeoff between model quality, latency, compute cost, privacy, and user experience.**
-
----
-
-# 8. Interpretability and Responsible ML
-
-Performance alone isn't sufficient.
-
-For tabular models, I would use techniques such as **SHAP** to understand:
-
-* Global feature importance
-* Individual prediction drivers
-* Unexpected model behavior
-* Potential proxy variables
-* Model drift
-
-But explainability is only one layer.
-
-I would also evaluate:
-
-```text
-Accuracy
-+ Calibration
-+ Stability
-+ Fairness
-+ Privacy
-+ Latency
-+ Reliability
-```
-
-The question becomes not just:
-
-> "Is the model accurate?"
-
-but:
-
-> **"Is this a model I would trust to operate reliably at scale?"**
-
----
-
-# My Overall ML Architecture Philosophy
-
-I think of production ML as five interconnected layers:
-
-**1. Privacy**
-Collect and expose only the data required for the problem.
-
-**2. Scale**
-Use distributed systems such as PySpark for large-scale data processing and feature engineering.
-
-**3. Reliability**
-Use schema validation, data-quality tests, unit tests, and monitoring.
-
-**4. Reproducibility**
-Track code, configuration, data, features, experiments, and model versions.
-
-**5. Deployment Safety**
-Use CI/CD, model registries, automated validation, controlled rollouts, and rollback mechanisms.
-
-The model itself may only be one component.
-
-**The real engineering challenge is building a trustworthy system around it.**
-
-
-
+“Instead of automatically moving the data to the model, I think about whether I can move the computation closer to where the data already lives.”
 
 
