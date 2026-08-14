@@ -9,7 +9,7 @@ every project in the monorepo (`attribution/`, `customer-intelligence-platform/`
 
 # Production ML Architecture: From Model to Scalable, Privacy-Preserving System
 
-When I think about production machine learning, I don't start with the algorithm. I think about the **end-to-end system**: data → features → training → validation → deployment → monitoring, with **privacy, scalability, reproducibility, and reliability built into every layer.**
+I think about production machine learning as the **end-to-end system**: data → features → training → validation → deployment → monitoring, with **privacy, scalability, reproducibility, and reliability built into every layer.**
 
 ## 1. Move From Notebooks to Modular Production Code
 
